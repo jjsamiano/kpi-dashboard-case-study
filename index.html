@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reconciliation Run — Data Quality Dashboard Case Study</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #F5F7F9;
+    --panel: #FFFFFF;
+    --border: #E1E5EA;
+    --ink: #14213D;
+    --ink-soft: #5B6472;
+    --teal: #2C6E5E;
+    --teal-soft: #E4EFEC;
+    --amber: #B8631F;
+    --amber-soft: #FBEBDA;
+    --slate: #7C8798;
+    --slate-soft: #EEF1F4;
+    --mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    --sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-font-smoothing: antialiased; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    padding: 48px 24px 80px;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--amber);
+    background: var(--amber-soft);
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-weight: 600;
+    margin-bottom: 18px;
+  }
+
+  h1 {
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 12px;
+  }
+
+  .subtitle {
+    color: var(--ink-soft);
+    font-size: 16px;
+    max-width: 640px;
+    margin: 0 0 8px;
+  }
+
+  .links {
+    font-family: var(--mono);
+    font-size: 13px;
+    margin-top: 18px;
+  }
+  .links a {
+    color: var(--teal);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+  }
+  .links a:hover, .links a:focus-visible { border-bottom-color: var(--teal); }
+  .links span.sep { color: var(--border); margin: 0 10px; }
+
+  header { padding-bottom: 36px; border-bottom: 1px solid var(--border); margin-bottom: 36px; }
+
+  /* KPI tiles */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 40px;
+  }
+  .kpi {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 18px 18px 16px;
+  }
+  .kpi .label {
+    font-size: 12px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+  .kpi .value {
+    font-family: var(--mono);
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .kpi .value.teal { color: var(--teal); }
+  .kpi .value.amber { color: var(--amber); }
+  .kpi .sub { font-size: 12px; color: var(--ink-soft); margin-top: 6px; font-family: var(--mono); }
+
+  /* section grid */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1.1fr 1.4fr;
+    gap: 18px;
+    margin-bottom: 18px;
+    align-items: stretch;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 22px 24px 24px;
+  }
+
+  .panel h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    margin: 0 0 20px;
+    font-weight: 600;
+  }
+
+  /* completeness bars */
+  .meter-row { margin-bottom: 18px; }
+  .meter-row:last-child { margin-bottom: 0; }
+  .meter-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  .meter-label .pct { font-family: var(--mono); font-weight: 600; }
+  .meter-track {
+    height: 8px;
+    background: var(--slate-soft);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .meter-fill {
+    height: 100%;
+    background: var(--teal);
+    border-radius: 4px;
+    width: 0;
+    transition: width 900ms cubic-bezier(.2,.8,.2,1);
+  }
+
+  /* match breakdown stacked bar */
+  .match-bar {
+    display: flex;
+    height: 28px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 6px 0 14px;
+  }
+  .match-seg { height: 100%; }
+  .match-seg.matched { background: var(--teal); }
+  .match-seg.crm-only { background: var(--slate); }
+  .match-seg.mkt-only { background: var(--amber); }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--ink-soft); }
+  .legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+  .legend .matched .dot { background: var(--teal); }
+  .legend .crm-only .dot { background: var(--slate); }
+  .legend .mkt-only .dot { background: var(--amber); }
+
+  /* discrepancy log */
+  .log { display: flex; flex-direction: column; gap: 10px; }
+  .log-entry {
+    border-left: 3px solid var(--amber);
+    background: var(--amber-soft);
+    border-radius: 0 4px 4px 0;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  .log-entry .who { font-weight: 600; margin-bottom: 3px; }
+  .log-entry .field-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--amber);
+    letter-spacing: 0.05em;
+  }
+  .log-entry .diff {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-top: 4px;
+  }
+  .log-entry .diff .old { text-decoration: line-through; opacity: 0.7; }
+  .log-entry .diff .arrow { margin: 0 6px; color: var(--slate); }
+  .log-entry .diff .new { color: var(--teal); font-weight: 600; }
+
+  /* pipeline */
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    margin-top: 8px;
+  }
+  .stage {
+    position: relative;
+    padding: 0 18px 0 0;
+  }
+  .stage:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 15px;
+    right: -1px;
+    width: calc(100% - 30px);
+    height: 1px;
+    background: var(--border);
+    left: 30px;
+  }
+  .stage-num {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--teal);
+    background: var(--teal-soft);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    position: relative;
+    z-index: 1;
+  }
+  .stage h3 { font-size: 14px; margin: 0 0 6px; }
+  .stage p { font-size: 13px; color: var(--ink-soft); margin: 0 0 8px; }
+  .stage .flow {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .stage .flow .arrow { color: var(--slate); margin: 0 4px; }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
+  @media (max-width: 760px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .pipeline { grid-template-columns: 1fr; gap: 22px; }
+    .stage:not(:last-child)::after { display: none; }
+  }
+
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--teal);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .meter-fill { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="eyebrow">Sample / synthetic data</span>
+    <h1>Reconciliation Run: CRM × Marketing Platform</h1>
+    <p class="subtitle">
+      A KPI view of the two-stage data quality pipeline in this portfolio — SQL
+      deduplication, Python fuzzy-matching, and cross-system reconciliation —
+      styled the way I'd present it in a weekly data quality review.
+    </p>
+    <div class="links">
+      <a href="../01-sql-data-quality-toolkit">01 — SQL data quality toolkit</a>
+      <span class="sep">/</span>
+      <a href="../02-python-etl-reconciliation">02 — Python ETL reconciliation</a>
+    </div>
+  </header>
+
+  <section class="kpi-row">
+    <div class="kpi">
+      <div class="label">Unique Contacts</div>
+      <div class="value">11</div>
+      <div class="sub">after full pipeline</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Duplicates Resolved</div>
+      <div class="value teal">2</div>
+      <div class="sub">18.2% of raw CRM rows</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Cross-System Match Rate</div>
+      <div class="value teal">88.9%</div>
+      <div class="sub">8 of 9 CRM contacts matched</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Discrepancies Flagged</div>
+      <div class="value amber">3</div>
+      <div class="sub">routed for review, not auto-merged</div>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="panel">
+      <h2>Field Completeness</h2>
+      <div class="meter-row">
+        <div class="meter-label"><span>Email</span><span class="pct">100.0%</span></div>
+        <div class="meter-track"><div class="meter-fill" data-pct="100"></div></div>
+      </div>
+      <div class="meter-row">
+        <div class="meter-label"><span>Phone</span><span class="pct">100.0%</span></div>
+        <div class="meter-track"><div class="meter-fill" data-pct="100"></div></div>
+      </div>
+      <div class="meter-row">
+        <div class="meter-label"><span>Company</span><span class="pct">81.8%</span></div>
+        <div class="meter-track"><div class="meter-fill" data-pct="81.8"></div></div>
+      </div>
+
+      <h2 style="margin-top:28px;">Match Breakdown</h2>
+      <div class="match-bar" role="img" aria-label="8 matched across both systems, 1 CRM-only, 2 marketing-only, out of 11 total">
+        <div class="match-seg matched" style="width:72.7%"></div>
+        <div class="match-seg crm-only" style="width:9.1%"></div>
+        <div class="match-seg mkt-only" style="width:18.2%"></div>
+      </div>
+      <div class="legend">
+        <span class="matched"><span class="dot"></span>Matched (8)</span>
+        <span class="crm-only"><span class="dot"></span>CRM only (1)</span>
+        <span class="mkt-only"><span class="dot"></span>Marketing only (2)</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Discrepancy Log — flagged for review</h2>
+      <div class="log">
+        <div class="log-entry">
+          <div class="who">Jon Reyes <span class="field-tag">email</span></div>
+          <div class="diff"><span class="old">j.reyes@harboranalytics.io</span><span class="arrow">vs</span><span class="new">jonathan.reyes@harboranalytics.io</span></div>
+        </div>
+        <div class="log-entry">
+          <div class="who">Priya Nair <span class="field-tag">phone</span></div>
+          <div class="diff"><span class="old">not-a-phone</span><span class="arrow">vs</span><span class="new">713-555-0144</span></div>
+        </div>
+        <div class="log-entry">
+          <div class="who">Sarah Lopez <span class="field-tag">email</span></div>
+          <div class="diff"><span class="old">sarah.lopez@ (malformed)</span><span class="arrow">vs</span><span class="new">sara.lopez@coastalfreight.com</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Pipeline</h2>
+    <div class="pipeline">
+      <div class="stage">
+        <div class="stage-num">1</div>
+        <h3>SQL deterministic dedup</h3>
+        <p>Exact email/phone key matching on the raw CRM export.</p>
+        <div class="flow">15<span class="arrow">→</span>11</div>
+      </div>
+      <div class="stage">
+        <div class="stage-num">2</div>
+        <h3>Python fuzzy dedup</h3>
+        <p>Name-similarity + secondary-key matching resolves what SQL left behind.</p>
+        <div class="flow">11<span class="arrow">→</span>9</div>
+      </div>
+      <div class="stage">
+        <div class="stage-num">3</div>
+        <h3>Cross-system reconciliation</h3>
+        <p>CRM contacts matched against a marketing platform export; conflicts flagged.</p>
+        <div class="flow">9<span class="arrow">+</span>10<span class="arrow">→</span>11</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    All figures on this page come from the synthetic sample dataset in this
+    repository's companion projects — no employer or client data is used.
+    Built as a static page (no build step, no dependencies) so it can be
+    served directly from GitHub Pages.
+  </footer>
+
+</div>
+
+<script>
+  // Animate completeness meters in on load (respects prefers-reduced-motion via CSS)
+  document.querySelectorAll('.meter-fill').forEach(function (el) {
+    var pct = el.getAttribute('data-pct');
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        el.style.width = pct + '%';
+      });
+    });
+  });
+</script>
+
+</body>
+</html>

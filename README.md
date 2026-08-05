@@ -1,7 +1,7 @@
 # KPI Dashboard Case Study
 
 A single static page (`index.html`, no build step, no dependencies) that
-presents the output of the [`02-python-etl-reconciliation`](../02-python-etl-reconciliation)
+presents the output of the [`02-python-etl-reconciliation`](https://github.com/jjsamiano/python-etl-reconciliation)
 pipeline the way I'd present it in a weekly data quality review — the same
 job a Power BI or Tableau dashboard does, built here as plain HTML/CSS/JS so
 it's viewable with just a browser, no BI license required.
